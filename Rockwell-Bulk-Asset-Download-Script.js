@@ -1,9 +1,11 @@
 // Rockwell-Bulk-Asset-Download-Script.js
 // Download from a list of item numbers, assets for using Rockwell products
 // MARCH 2025
+// version 1.0
 // by TheNeutralConductor
 // https://github.com/TheNeutralConductor/Rockwell-Bulk-Asset-Download-Script
 
+// list of Rockwell item numbers to get assets for
 const rockwellItemNumbers = [
   "440N-A02005",
   "1734-AENT",
@@ -16,6 +18,9 @@ const rockwellItemNumbers = [
   "140MT-C-ASA11",
 ];
 
+const VERSION = "1.0";
+const SECONDS = 3; // time delay between downloads
+
 let assetARRAY = [];
 
 console.clear();
@@ -24,13 +29,15 @@ console.log(
   "color: blue;"
 );
 
-console.log("%cDATE: %c1st March 2025", "font-weight:bold", "font-color:grey");
+console.log("%cDATE: %c2nd March 2025", "font-weight:bold", "font-color:grey");
 
 console.log(
   "%cFILENAME: %cRockwell-Bulk-Asset-Download-Script.js",
   "font-weight:bold",
   "font-color:grey"
 );
+
+console.log(`%cVERSION: %c${VERSION}`, "font-weight:bold", "font-color:grey");
 
 console.log(
   "%cGITHUB REPOSITORY: %chttps://github.com/TheNeutralConductor/Rockwell-Bulk-Asset-Download-Script",
@@ -43,7 +50,7 @@ console.log(
   "color: navy; font-family:sans-serif; font-size: 16px"
 );
 
-async function fetchH1(item) {
+async function fetchRockwellWebpage(item) {
   try {
     const response = await fetch(
       `https://www.rockwellautomation.com/en-us/products/details.${item}.html`,
@@ -64,11 +71,11 @@ async function fetchH1(item) {
   }
 }
 
-async function getH1Headings(items) {
-  const headings = [];
+async function getRockwellAssets(items) {
+  const assetARRAY = [];
   for (const item of items) {
     try {
-      const webpage = await fetchH1(item);
+      const webpage = await fetchRockwellWebpage(item);
       const description = webpage.querySelector(
         "#ra-product-new__product-details div.ra-product-new__header-top h1"
       ).textContent;
@@ -81,12 +88,13 @@ async function getH1Headings(items) {
         "color: darkgreen; font-family:sans-serif; font-size: 12px"
       );
 
-      headings.push({
+      assetARRAY.push({
         itemNumberRockwell: item,
         itemDescription: description,
         itemLifeCycleStatus: lifeCycleStatus,
         title: `${item} Product Page`,
         urllink: `https://www.rockwellautomation.com/en-us/products/details.${item}.html`,
+        filename: "",
       });
 
       const photoArray = webpage.querySelectorAll(
@@ -102,12 +110,20 @@ async function getH1Headings(items) {
           `%c\t\t${item} - ${photoTitle} - ${photoLink}`,
           "color: navy; font-family:sans-serif; font-size: 12px"
         );
-        headings.push({
+
+        let fileName = "";
+        let check = photoLink.split("/").pop();
+        if (check.includes(".")) {
+          fileName = check;
+        }
+
+        assetARRAY.push({
           itemNumberRockwell: item,
           itemDescription: description,
           itemLifeCycleStatus: lifeCycleStatus,
           title: photoTitle,
           urllink: photoLink,
+          filename: fileName,
         });
       });
 
@@ -121,12 +137,19 @@ async function getH1Headings(items) {
           `%c\t\t${item} - ${photoTitle} - ${photoLink}`,
           "color: navy; font-family:sans-serif; font-size: 12px"
         );
-        headings.push({
+
+        let fileName = "";
+        let check = photoLink.split("/").pop();
+        if (check.includes(".")) {
+          fileName = check;
+        }
+        assetARRAY.push({
           itemNumberRockwell: item,
           itemDescription: description,
           itemLifeCycleStatus: lifeCycleStatus,
           title: photoTitle,
           urllink: photoLink,
+          filename: fileName,
         });
       }
 
@@ -145,12 +168,19 @@ async function getH1Headings(items) {
           `%c\t\t${item} - ${cells[0].textContent} - ${mylink}`,
           "color: navy; font-family:sans-serif; font-size: 12px"
         );
-        headings.push({
+
+        let fileName = "";
+        let check = mylink.split("/").pop();
+        if (check.includes(".")) {
+          fileName = check;
+        }
+        assetARRAY.push({
           itemNumberRockwell: item,
           itemDescription: description,
           itemLifeCycleStatus: lifeCycleStatus,
           title: cells[0].textContent,
           urllink: mylink,
+          filename: fileName,
         });
       });
 
@@ -170,12 +200,19 @@ async function getH1Headings(items) {
             `%c\t\t${item} - ${cells[0].textContent} - ${mylink}`,
             "color: navy; font-family:sans-serif; font-size: 12px"
           );
-          headings.push({
+
+          let fileName = "";
+          let check = mylink.split("/").pop();
+          if (check.includes(".")) {
+            fileName = check;
+          }
+          assetARRAY.push({
             itemNumberRockwell: item,
             itemDescription: description,
             itemLifeCycleStatus: lifeCycleStatus,
             title: cells[0].textContent,
             urllink: mylink,
+            filename: fileName,
           });
         }
       });
@@ -186,11 +223,12 @@ async function getH1Headings(items) {
       );
     }
   }
-  return headings;
+  return assetARRAY;
 }
 
 function exportToCSV(data) {
   const csvRows = [];
+  const urlArray = [];
   const headers = Object.keys(data[0]);
   csvRows.push(headers.join(","));
 
@@ -206,7 +244,7 @@ function exportToCSV(data) {
   a.setAttribute("hidden", "");
   a.setAttribute("href", url);
 
-  let filename = `ROCKWELL-CAD-DOWNLOAD-${Date()
+  const filename = `ROCKWELL-ASSET-CSV-${Date()
     .slice(0, 24)
     .replaceAll(" ", "-")
     .replaceAll(":", "-")}.csv`;
@@ -215,13 +253,62 @@ function exportToCSV(data) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+
+  console.log(
+    "%cAssets are downloading to your computer now.",
+    "color: navy; font-family:sans-serif; font-size: 16px"
+  );
+
+  const filteredURLS = data.filter((x) => x.fileName != "");
+
+  filteredURLS.forEach((item) => {
+    if (item.filename != "") {
+      urlArray.push(`${item.urllink}`);
+    }
+  });
+
+  const finalURLS = [...new Set(urlArray)];
+
+  const downloadFile = async (url, index, total) => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const fileName = url.split("/").pop();
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    console.log(
+      `%c\t${index + 1}/${total} - Download Success : ${url}`,
+      "background-color:Chartreuse;"
+    );
+  };
+
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const downloadAllFiles = async (urls) => {
+    for (let index = 0; index < urls.length; index++) {
+      try {
+        await downloadFile(urls[index], index, urls.length);
+        await delay(SECONDS); // time delay between downloads
+      } catch (error) {
+        console.log(
+          `%c\tFailed to download: ${url}`,
+          "color:red;font-weight:bold"
+        );
+      }
+    }
+  };
+
+  downloadAllFiles(finalURLS);
 }
 
-getH1Headings(rockwellItemNumbers)
-  .then((headings) => {
-    console.log(headings);
-    exportToCSV(headings);
+getRockwellAssets(rockwellItemNumbers)
+  .then((assetARRAY) => {
+    // console.log(assetARRAY);
+    exportToCSV(assetARRAY);
   })
   .catch((error) => {
-    console.log("ERROR-----");
+    console.log("*** Something went wrong !! ***");
   });
